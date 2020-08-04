@@ -58,6 +58,7 @@ export class User {
   userModel: Sofa.AsyncOptions;
   resetPasswordModel: Sofa.AsyncOptions;
   changePasswordModel: Sofa.AsyncOptions;
+  resetPinModel: Sofa.AsyncOptions;
 
   constructor(
     protected config: ConfigHelper,
@@ -230,6 +231,21 @@ export class User {
       validate: {
         newPassword: this.passwordConstraints,
         confirmPassword: {
+          presence: true
+        }
+      }
+    };
+
+    this.resetPinModel = {
+      async: true,
+      customValidators: {
+        matches: this.matches
+      },
+      validate: {
+        token: {
+          presence: true
+        },
+        pin: {
           presence: true
         }
       }
@@ -981,6 +997,59 @@ export class User {
       });
   }
 
+  resetPin(form, req: Partial<Request> = undefined): Promise<SlUserDoc> {
+    req = req || {};
+    const ResetPinModel = Model(this.resetPinModel);
+    const pinResetForm = new ResetPinModel(form);
+    let user;
+    return pinResetForm
+      .validate()
+      .then(
+        () => {
+          const tokenHash = hashToken(form.token);
+          return this.userDB.view('auth', 'pinReset', {
+            key: tokenHash,
+            include_docs: true
+          });
+        },
+        err => {
+          return Promise.reject({
+            error: 'Validation failed',
+            validationErrors: err,
+            status: 400
+          });
+        }
+      )
+      .then(results => {
+        if (!results.rows.length) {
+          return Promise.reject({ status: 400, error: 'Invalid token' });
+        }
+        user = results.rows[0].doc;
+        if (user.forgotPin.expires < Date.now()) {
+          return Promise.reject({ status: 400, error: 'Token expired' });
+        }
+        return form.pin;
+      })
+      .then(async pin => {
+        user.profile.pin = pin;
+        delete user.forgotPin;
+        if (user.unverifiedEmail) {
+          user = await this.markEmailAsVerified(
+            user,
+            'verified via pin reset',
+            req
+          );
+        }
+        return this.logActivity(user._id, 'reset pin', 'local', req, user);
+      })
+      .then(finalUser => this.userDB.insert(finalUser))
+      .then(() => this.sendModifiedPinEmail(user, req))
+      .then(() => {
+        this.emitter.emit('pin-reset', user);
+        return Promise.resolve(user);
+      });
+  }
+
   async changePasswordSecure(user_id: string, form, req) {
     req = req || {};
     const ChangePasswordModel = Model(this.changePasswordModel);
@@ -1023,6 +1092,65 @@ export class User {
       return this.logoutOthers(req.user.key);
     } else {
       return;
+    }
+  }
+
+  forgotPin(email: string, req: Partial<Request>) {
+    if (!email || !email.match(EMAIL_REGEXP)) {
+      return Promise.reject({ error: 'invalid email', status: 400 });
+    }
+    req = req || {};
+    let user: SlUserDoc, token, tokenHash;
+    return this.userDB
+      .view('auth', 'email', { key: email, include_docs: true })
+      .then(result => {
+        if (!result.rows.length) {
+          return Promise.reject({
+            error: 'User not found',
+            status: 404
+          });
+        }
+        user = result.rows[0].doc;
+        token = URLSafeUUID();
+        if (this.config.getItem('local.tokenLengthOnReset')) {
+          token = token.substring(
+            0,
+            this.config.getItem('local.tokenLengthOnReset')
+          );
+        }
+        tokenHash = hashToken(token);
+        user.forgotPin = {
+          token: tokenHash, // Store secure hashed token
+          issued: Date.now(),
+          expires: Date.now() + this.tokenLife * 1000
+        };
+        return this.logActivity(user._id, 'forgot pin', 'local', req, user);
+      })
+      .then(finalUser => {
+        return this.userDB.insert(finalUser);
+      })
+      .then(() => {
+        return this.mailer.sendEmail(
+          'forgotPin',
+          user.email || user.unverifiedEmail.email,
+          { user: user, req: req, token: token }
+        ); // Send user the unhashed token
+      })
+      .then(() => {
+        this.emitter.emit('forgot-pin', user);
+        return Promise.resolve(user.forgotPin);
+      });
+  }
+
+  private sendModifiedPinEmail(user, req) {
+    if (this.config.getItem('local.sendPinChangedEmail')) {
+      return this.mailer.sendEmail(
+        'modifiedPin',
+        user.email || user.unverifiedEmail.email,
+        { user: user, req: req }
+      );
+    } else {
+      return Promise.resolve();
     }
   }
 

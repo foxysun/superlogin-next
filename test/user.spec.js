@@ -81,6 +81,16 @@ const userConfig = new Configure({
         '../templates/email/modified-password.ejs'
       ),
       format: 'text'
+    },
+    forgotPin: {
+      subject: 'Your pin reset link',
+      template: path.join(__dirname, '../templates/email/forgot-pin.ejs'),
+      format: 'text'
+    },
+    modifiedPin: {
+      subject: 'Your pin has been modified',
+      template: path.join(__dirname, '../templates/email/modified-pin.ejs'),
+      format: 'text'
     }
   },
   dbServer: {
@@ -633,6 +643,108 @@ describe('User Model', async function () {
         expect(args[2].user._id).to.equal(testUserForm.username);
 
         return util.verifyPassword(userAfterChange.local, 'superpassword2');
+      })
+      .then(function () {
+        return emitterPromise;
+      });
+  });
+
+  it('should generate a pin reset token', function () {
+    const emitterPromise = new Promise(function (resolve) {
+      emitter.once('forgot-pin', function (user) {
+        expect(user._id).to.equal('superuser');
+        resolve();
+      });
+    });
+
+    spySendMail = sinon.spy(mailer, 'sendEmail');
+
+    return previous
+      .then(function () {
+        console.log('Generating pin reset token');
+        return user.forgotPin(testUserForm.email, req);
+      })
+      .then(function () {
+        return userDB.get(testUserForm.username);
+      })
+      .then(function (result) {
+        resetTokenHashed = result.forgotPin.token; // hashed token stored in db
+
+        expect(result.forgotPin.token).to.be.a('string');
+        expect(result.forgotPin.expires).to.be.above(Date.now());
+        expect(result.activity[0].action).to.equal('forgot pin');
+
+        expect(spySendMail.callCount).to.equal(1);
+
+        const args = spySendMail.getCall(0).args;
+        expect(args[0]).to.equal('forgotPin');
+        expect(args[1]).to.equal(testUserForm.email);
+        expect(args[2].user._id).to.equal(testUserForm.username);
+        expect(args[2].token).to.be.a('string');
+
+        resetToken = args[2].token; // keep unhashed token emailed to user.
+        expect(resetTokenHashed).to.not.equal(resetToken);
+        return emitterPromise;
+      });
+  });
+
+  it('should not reset the pin', function () {
+    const emitterPromise = new Promise(function (resolve) {
+      emitter.once('pin-changed', function (user) {
+        expect(user._id).to.equal('superuser');
+        resolve();
+      });
+    });
+
+    return previous
+      .then(function () {
+        console.log('Resetting the pin');
+        const form = {
+          token: resetToken,
+          pin: '1234'
+        };
+        return user.resetPin(form);
+      })
+      .then(function () {
+        throw new Error('Validation errors should have been generated');
+      })
+      .catch(function (err) {
+        throw err;
+      });
+  });
+
+  it('should reset the pin', function () {
+    const emitterPromise = new Promise(function (resolve) {
+      emitter.once('pin-reset', function (user) {
+        expect(user._id).to.equal('superuser');
+        resolve();
+      });
+    });
+
+    return previous
+      .then(function () {
+        console.log('Resetting the pin');
+        const form = {
+          token: resetToken,
+          pin: '4321'
+        };
+        return user.resetPin(form);
+      })
+      .then(function () {
+        return userDB.get(testUserForm.username);
+      })
+      .then(function (userAfterReset) {
+        // It should delete the pin reset token completely
+        expect(userAfterReset.forgotPin).to.be.an.undefined;
+        expect(userAfterReset.activity[0].action).to.equal('reset pin');
+
+        expect(spySendMail.callCount).to.equal(2);
+        const args = spySendMail.getCall(1).args;
+        expect(args[0]).to.equal('modifiedPin');
+        expect(args[1]).to.equal(testUserForm.email);
+        expect(args[2].user._id).to.equal(testUserForm.username);
+
+        return userAfterReset.profile.pin === '4321';
       })
       .then(function () {
         return emitterPromise;

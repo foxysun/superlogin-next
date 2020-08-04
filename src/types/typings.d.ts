@@ -87,6 +87,7 @@ export interface SlUserDoc extends Document, IdentifiedObj {
   local: LocalHashObj;
   activity?: UserActivity[];
   forgotPassword?: PasswortResetEntry;
+  forgotPin?: PasswortResetEntry;
   unverifiedEmail?: { email: string; token: string };
   signUp: SignUpObj;
   personalDBs: PersonalDBCollection;
