@@ -177,6 +177,36 @@ module.exports = function (
     );
   });
 
+  router.post('/forgot-pin', function (
+    req: Request,
+    res: Response,
+    next: NextFunction
+  ) {
+    user.forgotPin(req.body.email, req).then(
+      function () {
+        res.status(200).json({ success: 'Pin recovery email sent.' });
+      },
+      function (err) {
+        return next(err);
+      }
+    );
+  });
+
+  router.post('/pin-reset', function (
+    req: Request,
+    res: Response,
+    next: NextFunction
+  ) {
+    user.resetPin(req.body, req).then(
+      function () {
+        res.status(200).json({ success: 'Pin successfully reset.' });
+      },
+      function (err) {
+        return next(err);
+      }
+    );
+  });
+
   router.post('/forgot-password', function (
     req: Request,
     res: Response,

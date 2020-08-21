@@ -40,6 +40,13 @@ module.exports = {
           }
         }
       },
+      pinReset: {
+        map: function (doc) {
+          if (doc.forgotPin && doc.forgotPin.token) {
+            emit(doc.forgotPin.token, null);
+          }
+        }
+      },
       session: {
         map: function (doc) {
           if (doc.session) {

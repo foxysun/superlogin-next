@@ -59,6 +59,16 @@ module.exports = {
         '../../templates/email/forgot-username.ejs'
       ),
       format: 'text'
+    },
+    forgotPin: {
+      subject: 'Your pin reset link',
+      template: path.join(__dirname, '../../templates/email/forgot-pin.ejs'),
+      format: 'text'
+    },
+    modifiedPin: {
+      subject: 'Your pin has been modified',
+      template: path.join(__dirname, '../../templates/email/modified-pin.ejs'),
+      format: 'text'
     }
   }
 };
