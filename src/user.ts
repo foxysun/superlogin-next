@@ -755,6 +755,7 @@ export class User {
       issued: newToken.issued,
       expires: newToken.expires,
       provider: provider,
+      isExpired: false,
       ip: ip
     };
     user.session[newToken.key] = newSession as SessionObj;
@@ -804,6 +805,11 @@ export class User {
     }
     if (user.profile) {
       newSession.profile = user.profile;
+    }
+    if (user.signUp) {
+      newSession.isExpired = this.isTrialExpired(user.signUp.timestamp);
+    } else {
+      newSession.isExpired = false;
     }
     // New config option: also send name and user-ID
     if (this.config.getItem('local.sendNameAndUUID')) {
@@ -1229,6 +1235,56 @@ export class User {
       });
   }
 
+  async updateMembership(user_id: string, accountType: string, req: Partial<Request>) {
+    req = req || {};
+    let user: SlUserDoc;
+    try {
+      user = await this.userDB.get(user_id);
+      user.profile.accountType = accountType;
+      await this.userDB.insert(user);
+      return {
+        user_id,
+        firstName: user.profile.firstName,
+        lastName: user.profile.lastName,
+        accountType: user.profile.accountType,
+        email: user.profile.email,
+        isExpired: this.isTrialExpired(user.signUp.timestamp),
+      };
+    } catch (err) {
+      throw (
+        err || {
+          error: 'Upgrade user failed',
+          message: 'Upgrade user failed',
+          status: 400
+        }
+      );
+    }
+  }
+
+  async getUserInfo(user_id: string, req: Partial<Request>) {
+    req = req || {};
+    let user: SlUserDoc;
+    try {
+      user = await this.userDB.get(user_id);
+      return {
+        user_id,
+        firstName: user.profile.firstName,
+        lastName: user.profile.lastName,
+        accountType: user.profile.accountType,
+        email: user.profile.email,
+        isExpired: this.isTrialExpired(user.signUp.timestamp),
+      };
+    } catch (err) {
+      throw (
+        err || {
+          error: 'Upgrade user failed',
+          message: 'Upgrade user failed',
+          status: 400
+        }
+      );
+    }
+  }
+
   private sendModifiedPasswordEmail(user, req) {
     if (this.config.getItem('local.sendPasswordChangedEmail')) {
       return this.mailer.sendEmail(
@@ -1648,6 +1704,15 @@ export class User {
         roles: roles
       });
     });
+  }
+
+  isTrialExpired(timestamp) {
+    const oneDay = 24 * 60 * 60 * 1000; // hours * minutes * seconds * milliseconds
+    const currentDate = new Date();
+    const createdDate = new Date(timestamp);
+
+    const diffDays = Math.round(Math.abs((<any>currentDate - <any>createdDate) / oneDay));
+    return diffDays >= 14;
   }
 
   /**

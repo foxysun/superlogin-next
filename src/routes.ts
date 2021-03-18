@@ -263,6 +263,36 @@ module.exports = function (
     }
   );
 
+  router.post('/update-membership', function (
+    req: Request,
+    res: Response,
+    next: NextFunction
+  ) {
+    user.updateMembership(req.body.user_id, req.body.accountType, req).then(
+      function (data) {
+        res.status(200).json(data);
+      },
+      function (err) {
+        return next(err);
+      }
+    );
+  });
+
+  router.post('/userinfo', function (
+    req: Request,
+    res: Response,
+    next: NextFunction
+  ) {
+    user.getUserInfo(req.body.user_id, req).then(
+      function (data) {
+        res.status(200).json(data);
+      },
+      function (err) {
+        return next(err);
+      }
+    );
+  });
+
   router.post(
     '/unlink/:provider',
     passport.authenticate('bearer', { session: false }),

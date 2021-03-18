@@ -105,6 +105,7 @@ export interface SlSession {
   token: string;
   userDBs: { [db: string]: string };
   user_id: string;
+  isExpired?: boolean;
   ip?: string;
   profile?: string;
   user_uid?: string;
