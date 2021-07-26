@@ -419,6 +419,22 @@ module.exports = function (
     }
   );
 
+  // Setting up the auth api
+  router.get('/admin-get-users', function (
+    req: Request,
+    res: Response,
+    next: NextFunction
+  ) {
+    user.getUsers(req.body, req).then(
+      function (users) {
+        res.status(200).json(users);
+      },
+      function (err) {
+        return next(err);
+      }
+    );
+  });
+
   // route to test token authentication
   router.get(
     '/session',

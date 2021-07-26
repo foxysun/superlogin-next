@@ -31,6 +31,7 @@ import url from 'url';
 // regexp from https://emailregex.com/
 const EMAIL_REGEXP = /^(([^<>()\[\]\\.,;:\s@"]+(\.[^<>()\[\]\\.,;:\s@"]+)*)|(".+"))@((\[[0-9]{1,3}\.[0-9]{1,3}\.[0-9]{1,3}\.[0-9]{1,3}])|(([a-zA-Z\-0-9]+\.)+[a-zA-Z]{2,}))$/;
 const USER_REGEXP = /^[a-z0-9_-]{3,16}$/;
+const LAUNCH_SPECIAL = new Date(2021, 8, 31, 23, 59, 0, 0).toISOString();
 enum Cleanup {
   'expired' = 'expired',
   'other' = 'other',
@@ -326,6 +327,27 @@ export class User {
           return Promise.resolve(null);
         }
       });
+  }
+
+  async getUsers(form, req) {
+    const user_list = await this.userDB.list();
+    const { rows } = user_list;
+    if (rows.length > 1) {
+      let users = [];
+      for (let i = 1; i < rows.length; i++) {
+        const user = await this.userDB.get(rows[i].id);
+        users.push({
+          id: rows[i].id,
+          firstName: user.profile.firstName,
+          lastName: user.profile.lastName,
+          accountType: user.profile.accountType,
+          email: user.profile.email
+        });
+      }
+      return users;
+    } else {
+      return [];
+    }
   }
 
   createUser(form, req) {
@@ -1235,7 +1257,11 @@ export class User {
       });
   }
 
-  async updateMembership(user_id: string, accountType: string, req: Partial<Request>) {
+  async updateMembership(
+    user_id: string,
+    accountType: string,
+    req: Partial<Request>
+  ) {
     req = req || {};
     let user: SlUserDoc;
     try {
@@ -1248,7 +1274,7 @@ export class User {
         lastName: user.profile.lastName,
         accountType: user.profile.accountType,
         email: user.profile.email,
-        isExpired: this.isTrialExpired(user.signUp.timestamp),
+        isExpired: this.isTrialExpired(user.signUp.timestamp)
       };
     } catch (err) {
       throw (
@@ -1272,7 +1298,7 @@ export class User {
         lastName: user.profile.lastName,
         accountType: user.profile.accountType,
         email: user.profile.email,
-        isExpired: this.isTrialExpired(user.signUp.timestamp),
+        isExpired: this.isTrialExpired(user.signUp.timestamp)
       };
     } catch (err) {
       throw (
@@ -1707,12 +1733,15 @@ export class User {
   }
 
   isTrialExpired(timestamp) {
-    const oneDay = 24 * 60 * 60 * 1000; // hours * minutes * seconds * milliseconds
-    const currentDate = new Date();
-    const createdDate = new Date(timestamp);
+    return timestamp > LAUNCH_SPECIAL;
+    // const oneDay = 24 * 60 * 60 * 1000; // hours * minutes * seconds * milliseconds
+    // const currentDate = new Date();
+    // const createdDate = new Date(timestamp);
 
-    const diffDays = Math.round(Math.abs((<any>currentDate - <any>createdDate) / oneDay));
-    return diffDays >= 14;
+    // const diffDays = Math.round(
+    //   Math.abs((<any>currentDate - <any>createdDate) / oneDay)
+    // );
+    // return diffDays >= 14 ? 2 : diffDays >= 7 ? 1 : 0;
   }
 
   /**
