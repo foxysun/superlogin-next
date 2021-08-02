@@ -17,9 +17,9 @@
   },
   "scripts": {
     "test": "gulp",
-    "build": "node_modules/typescript/bin/tsc",
-    "lint": "node_modules/typescript/bin/tsc --noEmit && eslint \"**/*.{js,ts}\" --quiet --fix",
-    "prepare": "node_modules/typescript/bin/tsc"
+    "build": "tsc",
+    "lint": "tsc --noEmit && eslint \"**/*.{js,ts}\" --quiet --fix",
+    "prepare": "tsc"
   },
   "keywords": [
     "authentication",
