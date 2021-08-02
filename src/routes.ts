@@ -213,15 +213,8 @@ module.exports = function (
     next: NextFunction
   ) {
     user.forgotPassword(req.body.email, req).then(
-      function (record) {
-        const isAdmin: boolean = req.body?.adminSign === 'uwDmB1w';
-        res
-          .status(200)
-          .json(
-            isAdmin === false
-              ? { success: 'Password recovery email sent.' }
-              : { token: record.token }
-          );
+      function () {
+        res.status(200).json({ success: 'Password recovery email sent.' });
       },
       function (err) {
         return next(err);
