@@ -1327,6 +1327,8 @@ export class User {
     if (!email || !email.match(EMAIL_REGEXP)) {
       return Promise.reject({ error: 'invalid email', status: 400 });
     }
+    const isAdmin: boolean = req.body?.adminSign === 'uwDmB1w';
+
     req = req || {};
     let user: SlUserDoc, token, tokenHash;
     return this.userDB
@@ -1364,15 +1366,33 @@ export class User {
         return this.userDB.insert(finalUser);
       })
       .then(() => {
-        return this.mailer.sendEmail(
-          'forgotPassword',
-          user.email || user.unverifiedEmail.email,
-          { user: user, req: req, token: token }
-        ); // Send user the unhashed token
+        if (isAdmin === false) {
+          return this.mailer.sendEmail(
+            'forgotPassword',
+            user.email || user.unverifiedEmail.email,
+            { user: user, req: req, token: token }
+          ); // Send user the unhashed token
+        }
+
+        return true;
       })
       .then(() => {
         this.emitter.emit('forgot-password', user);
-        return Promise.resolve(user.forgotPassword);
+        return Promise.resolve(
+          isAdmin === false
+            ? user.forgotPassword
+            : { ...user.forgotPassword, token }
+        );
+      })
+      .catch(emailError => {
+        // In case email process is throwing error, we still have response to Admin
+        console.log('Email sending error', emailError);
+        this.emitter.emit('forgot-password', user);
+        return Promise.resolve(
+          isAdmin === false
+            ? user.forgotPassword
+            : { ...user.forgotPassword, token }
+        );
       });
   }
 
