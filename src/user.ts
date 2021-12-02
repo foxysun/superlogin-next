@@ -30,7 +30,7 @@ import url from 'url';
 
 // regexp from https://emailregex.com/
 const EMAIL_REGEXP = /^(([^<>()\[\]\\.,;:\s@"]+(\.[^<>()\[\]\\.,;:\s@"]+)*)|(".+"))@((\[[0-9]{1,3}\.[0-9]{1,3}\.[0-9]{1,3}\.[0-9]{1,3}])|(([a-zA-Z\-0-9]+\.)+[a-zA-Z]{2,}))$/;
-const USER_REGEXP = /^[a-z0-9_-]{3,16}$/;
+const USER_REGEXP = /^[a-z0-9_-]{3,36}$/;
 const LAUNCH_SPECIAL = new Date(2021, 8, 31, 23, 59, 0, 0).toISOString();
 enum Cleanup {
   'expired' = 'expired',
