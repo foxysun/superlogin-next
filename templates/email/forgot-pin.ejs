@@ -1,9 +1,8 @@
 Hi <%= user.name %>,
 
-We have received a request to reset the pin for your account.
-If you made this request, please click on the link below or paste this into your browser to complete the process:
+If you made this request, please click on the link below or paste this into your browser (from your mobile device) to complete the process:
 
-<%= req.headers['x-forwarded-proto'] || req.protocol %>://<%= req.headers.host %>/pin-reset/<%= token %>
+myjobbox://app/pin-reset/<%= token %>
 
 This link will work for 24 hours or until your pin is reset.
 If you did not ask to change your pin, please ignore this email and your account will remain unchanged.
