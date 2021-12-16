@@ -1327,7 +1327,8 @@ export class User {
     if (!email || !email.match(EMAIL_REGEXP)) {
       return Promise.reject({ error: 'invalid email', status: 400 });
     }
-    const isAdmin: boolean = req.body?.adminSign === 'uwDmB1w';
+    const isAdmin: boolean =
+      req.body?.adminSign === this.config.getItem('adminKey');
 
     req = req || {};
     let user: SlUserDoc, token, tokenHash;
