@@ -336,15 +336,18 @@ export class User {
       let users = [];
       for (let i = 1; i < rows.length; i++) {
         const user = await this.userDB.get(rows[i].id);
-        const profile = user.profile;
 
-        users.push({
-          id: rows[i].id,
-          firstName: profile && profile.firstName,
-          lastName: profile && profile.lastName,
-          accountType: profile && profile.accountType,
-          email: profile && profile.email
-        });
+        if (rows[i].id.length > 15) {
+          const profile = user.profile;
+
+          users.push({
+            id: rows[i].id,
+            firstName: profile && profile.firstName,
+            lastName: profile && profile.lastName,
+            accountType: profile && profile.accountType,
+            email: profile && profile.email
+          });
+        }
       }
       return users;
     } else {
