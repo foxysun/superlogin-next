@@ -334,7 +334,7 @@ export class User {
     const { rows } = user_list;
     if (rows.length > 1) {
       let users = [];
-      for (let i = 1; i < rows.length; i++) {
+      for (let i = 0; i < rows.length; i++) {
         const user = await this.userDB.get(rows[i].id);
 
         if (rows[i].id.length > 15) {
