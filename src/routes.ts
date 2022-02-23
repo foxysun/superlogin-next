@@ -413,7 +413,7 @@ module.exports = function (
           res.status(200).json({ ok: true, success: `Email ${info}` });
         },
         function (err) {
-          return next(err);
+          return res.status(500).json({ message: err });
         }
       );
     }
